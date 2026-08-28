@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolo Buoni Pasto</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f4f5f7;
+    margin: 0;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 28px;
+    width: 100%;
+    max-width: 380px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+    color: #1f2430;
+  }
+  p.subtitle {
+    margin: 0 0 20px;
+    color: #6b7280;
+    font-size: 13px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  input[type="number"] {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="number"]:focus {
+    border-color: #4f46e5;
+  }
+  button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: #4f46e5;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: #4338ca; }
+  button:active { transform: scale(0.99); }
+  .result {
+    margin-top: 22px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 10px;
+    display: none;
+  }
+  .result.visible { display: block; }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #374151;
+  }
+  .row span:last-child {
+    font-weight: 600;
+    color: #111827;
+  }
+  .row.total {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 6px;
+    padding-top: 10px;
+    font-size: 15px;
+  }
+  .row.rest span:last-child {
+    color: #dc2626;
+  }
+  .error {
+    margin-top: 14px;
+    font-size: 13px;
+    color: #dc2626;
+    display: none;
+  }
+  .limits {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .limit-field {
+    flex: 1;
+  }
+  .limit-field label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  .limit-field input {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Calcolo Buoni Pasto</h1>
+  <p class="subtitle">Inserisci il totale della spesa per sapere quanti buoni da 5,29 € e da 8 € usare.</p>
+
+  <label for="totale">Totale spesa (€)</label>
+  <input type="number" id="totale" placeholder="Es. 22" step="0.01" min="0">
+
+  <div class="limits">
+    <div class="limit-field">
+      <label for="maxOtto">Max buoni da 8 €</label>
+      <input type="number" id="maxOtto" placeholder="Nessun limite" min="0" step="1">
+    </div>
+    <div class="limit-field">
+      <label for="maxCinque">Max buoni da 5,29 €</label>
+      <input type="number" id="maxCinque" placeholder="Nessun limite" min="0" step="1">
+    </div>
+  </div>
+  <p class="hint">Si possono usare al massimo 8 buoni pasto in totale.</p>
+
+  <button onclick="calcola()">Calcola</button>
+
+  <div class="error" id="errore">Inserisci un valore valido maggiore di zero.</div>
+
+  <div class="result" id="risultato">
+    <div class="row">
+      <span>Buoni da 8,00 €</span>
+      <span id="numOtto">0</span>
+    </div>
+    <div class="row">
+      <span>Buoni da 5,29 €</span>
+      <span id="numCinque">0</span>
+    </div>
+    <div class="row total">
+      <span>Totale coperto</span>
+      <span id="coperto">0,00 €</span>
+    </div>
+    <div class="row rest">
+      <span>Resto a carico</span>
+      <span id="resto">0,00 €</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const VAL_A = 5.29; // valore buono piccolo
+const VAL_B = 8.00; // valore buono grande
+const MAX_TOTALE_BUONI = 8; // limite massimo di buoni pasto utilizzabili in totale
+
+function euro(n) {
+  return n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function calcola() {
+  const input = document.getElementById('totale');
+  const target = parseFloat(input.value);
+  const erroreEl = document.getElementById('errore');
+  const risultatoEl = document.getElementById('risultato');
+
+  if (isNaN(target) || target <= 0) {
+    erroreEl.style.display = 'block';
+    risultatoEl.classList.remove('visible');
+    return;
+  }
+  erroreEl.style.display = 'none';
+
+  // Limiti opzionali impostati dall'utente per ciascun taglio di buono
+  const maxOttoInput = parseInt(document.getElementById('maxOtto').value, 10);
+  const maxCinqueInput = parseInt(document.getElementById('maxCinque').value, 10);
+  const limiteB = (!isNaN(maxOttoInput) && maxOttoInput >= 0) ? maxOttoInput : Infinity;
+  const limiteA = (!isNaN(maxCinqueInput) && maxCinqueInput >= 0) ? maxCinqueInput : Infinity;
+
+  // Lavoriamo in centesimi per evitare errori di arrotondamento con i decimali
+  const targetCent = Math.round(target * 100);
+  const aCent = Math.round(VAL_A * 100); // 529
+  const bCent = Math.round(VAL_B * 100); // 800
+
+  let best = { totale: 0, numA: 0, numB: 0 };
+
+  // Massimo numero possibile di buoni da 8, rispettando il limite globale e quello specifico
+  const maxB = Math.min(Math.floor(targetCent / bCent), MAX_TOTALE_BUONI, limiteB);
+
+  for (let b = 0; b <= maxB; b++) {
+    const restoCent = targetCent - b * bCent;
+    // quanti buoni da 5,29 entrano nel resto, rispettando il limite specifico
+    // e il limite totale di 8 buoni combinati
+    const maxAPerResto = Math.floor(restoCent / aCent);
+    const maxAPerLimiteTotale = MAX_TOTALE_BUONI - b;
+    const a = Math.max(0, Math.min(maxAPerResto, limiteA, maxAPerLimiteTotale));
+    const totCent = b * bCent + a * aCent;
+
+    if (totCent > best.totale) {
+      best = { totale: totCent, numA: a, numB: b };
+    }
+  }
+
+  const copertoEuro = best.totale / 100;
+  const restoEuro = (targetCent - best.totale) / 100;
+
+  document.getElementById('numOtto').textContent = best.numB;
+  document.getElementById('numCinque').textContent = best.numA;
+  document.getElementById('coperto').textContent = euro(copertoEuro);
+  document.getElementById('resto').textContent = euro(restoEuro);
+
+  risultatoEl.classList.add('visible');
+}
+
+// Permette di calcolare anche premendo Invio
+document.getElementById('totale').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') calcola();
+});
+</script>
+
+</body>
+</html>
